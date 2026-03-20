@@ -294,6 +294,12 @@ button:disabled {
   border-radius: 4px;
   min-height: 2em;
   font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.stat-left, .stat-right {
+  white-space: pre;
 }
 .error {
   color: #ff6b6b;

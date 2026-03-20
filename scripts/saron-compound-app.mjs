@@ -135,8 +135,8 @@ let lastGpuCsv = ''
 let lastCpuCsv = ''
 let lastFilename = ''
 
-function setStatus(msg, cls) {
-  statusEl.textContent = msg
+function setStatus(msg, cls, html) {
+  if (html) statusEl.innerHTML = msg; else statusEl.textContent = msg
   statusEl.className = cls || ''
 }
 
@@ -273,12 +273,10 @@ calcBtn.addEventListener('click', async () => {
     const diffCount = diffLines.filter(d => !d.isHeader && d.differs).length
 
     setStatus(
-      `${rows} compound rates · ${diffCount} differing line${diffCount !== 1 ? 's' : ''}\n\n` +
-      `           Compute    Format\n` +
-      `GPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms\n` +
-      `CPU  ${cpuMs.padStart(8)} ms\n\n` +
-      `GPU speedup: ${speedup}x`,
+      `<span class="stat-left">${rows} compound rates \u00b7 ${diffCount} differing line${diffCount !== 1 ? 's' : ''}\nGPU speedup: ${speedup}x</span>` +
+      `<span class="stat-right">           Compute    Format\nGPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms\nCPU  ${cpuMs.padStart(8)} ms</span>`,
       'success',
+      true,
     )
   } catch (err) {
     setStatus('Error: ' + err.message, 'error')
