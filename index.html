@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SARON Compound Rate Calculator (WebGPU)</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/editor/editor.main.min.css"
+      integrity="sha512-MFDhxgOYIqLdcYTXw7en/n5BshKoduTitYmX8TkQ+iJOGjrWusRi8+KmfZOrgaDrCjZSotH2d1U1e/Z1KT6nWw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="./scripts/lib/saron-compound.css" />
+  </head>
+
+  <body>
+    <h2>
+      SARON Compound Rate Calculator <span class="badge">WebGPU</span>
+    </h2>
+
+    <div class="controls">
+      <div class="full">
+        <label class="field">Rates TSV file</label>
+        <input type="file" id="tsvFile" accept=".tsv,.csv,.txt" />
+      </div>
+      <div>
+        <label class="field">Start Date</label>
+        <input
+          type="text"
+          id="startDate"
+          value="2022-01-03"
+          placeholder="YYYY-MM-DD"
+        />
+      </div>
+      <div>
+        <label class="field">End Date</label>
+        <input
+          type="text"
+          id="endDate"
+          value="2022-07-22"
+          placeholder="YYYY-MM-DD"
+        />
+      </div>
+      <div class="checkbox-row" style="align-self: end">
+        <label><input type="checkbox" id="all" checked /> All offsets</label>
+        <label
+          ><input type="checkbox" id="allStartDates" checked /> All start
+          dates</label
+        >
+      </div>
+      <div class="btn-row full">
+        <button id="calcBtn" disabled>Calculate</button>
+        <span id="fileStatus" style="color: #aaa; font-size: 0.85em"></span>
+      </div>
+    </div>
+
+    <h3>Compute Shader</h3>
+    <div id="editor"></div>
+
+    <h3>Output</h3>
+    <div id="status">Load a rates TSV file to begin.</div>
+
+    <script>
+      if (location.protocol === 'file:') {
+        document.getElementById('status').textContent =
+          'ES modules require HTTP. Run: python3 -m http.server 9090\nthen open http://localhost:9090  (or: just open)'
+        document.getElementById('status').className = 'error'
+        document.getElementById('calcBtn').disabled = true
+      } else {
+        var s1 = document.createElement('script')
+        s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.min.js'
+        s1.integrity = 'sha512-A+6SvPGkIN9Rf0mUXmW4xh7rDvALXf/f0VtOUiHlDUSPknu2kcfz1KzLpOJyL2pO+nZS13hhIjLqVgiQExLJrw=='
+        s1.crossOrigin = 'anonymous'
+        s1.referrerPolicy = 'no-referrer'
+        document.head.appendChild(s1)
+        var s2 = document.createElement('script')
+        s2.type = 'module'
+        s2.src = './scripts/saron-compound-app.mjs'
+        document.body.appendChild(s2)
+      }
+    </script>
+  </body>
+</html>

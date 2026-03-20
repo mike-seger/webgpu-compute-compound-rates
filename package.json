@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "webgpu": "^0.3.10"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.40.0"
+  }
+}
