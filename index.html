@@ -29,7 +29,7 @@
       </div>
       <div class="date-field">
         <label class="field">End Date</label>
-        <input type="text" id="endDate" value="2022-07-22" placeholder="YYYY-MM-DD" />
+        <input type="text" id="endDate" value="2022-07-21" placeholder="YYYY-MM-DD" />
       </div>
       <div class="checkbox-row">
         <label><input type="checkbox" id="all" checked /> All offsets</label>
@@ -43,8 +43,34 @@
     </div>
   </div>
 
-  <h3>Compute Shader</h3>
-  <div id="editor"></div>
+  <div class="tab-bar">
+    <button class="tab active" data-tab="editor">Compute Shader</button>
+    <button class="tab" data-tab="diff">Diff</button>
+  </div>
+  <div class="tab-panels">
+    <div id="editor" class="tab-panel active"></div>
+    <div id="diff" class="tab-panel">
+      <div class="diff-header">
+        <div class="diff-hdr-num"></div>
+        <div class="diff-hdr-col">GPU</div>
+        <div class="diff-hdr-col">CPU
+          <label class="diff-hdr-check"><input type="checkbox" id="hideCommon"> Hide common lines</label>
+        </div>
+      </div>
+      <div class="diff-view" id="diffView"></div>
+      <div class="diff-actions">
+        <div class="diff-actions-pad"></div>
+        <div class="col-actions">
+          <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU CSV">&#x2913;</button>
+          <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU to clipboard">&#x2398;</button>
+        </div>
+        <div class="col-actions">
+          <button id="cpuDownloadBtn" class="icon-btn" title="Download CPU CSV">&#x2913;</button>
+          <button id="cpuCopyBtn" class="icon-btn" title="Copy CPU to clipboard">&#x2398;</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <h3>Output</h3>
   <div id="status">Load a rates TSV file to begin.</div>

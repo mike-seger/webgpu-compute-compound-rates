@@ -1,6 +1,7 @@
 import { diffDays, plusDays } from './lib/date-utils.mjs'
 import { loadRates, fillRates } from './lib/rate-loader.mjs'
 import { formatCSV } from './lib/gpu-format.mjs'
+import { cpuCompoundCSV } from './lib/cpu-compound.mjs'
 
 const [SHADER_PREFIX, DEFAULT_SHADER, SHADER_SUFFIX] = await Promise.all([
   fetch('./scripts/lib/saron-prefix.wgsl').then(r => r.text()),
@@ -128,6 +129,11 @@ let monacoEditor = null
 const statusEl = document.getElementById('status')
 const fileStatusEl = document.getElementById('fileStatus')
 const calcBtn = document.getElementById('calcBtn')
+const diffViewEl = document.getElementById('diffView')
+
+let lastGpuCsv = ''
+let lastCpuCsv = ''
+let lastFilename = ''
 
 function setStatus(msg, cls) {
   statusEl.textContent = msg
@@ -239,24 +245,39 @@ calcBtn.addEventListener('click', async () => {
 
     const shaderSource = monacoEditor ? monacoEditor.getValue() : DEFAULT_SHADER
 
-    setStatus(`Computing ${totalOutputs.toLocaleString()} compound rates on GPU...`)
-    const t0 = performance.now()
-    const output = await runCompute(ratesData, weightsData, numDays, mode, totalOutputs, shaderSource)
-    const tGpu = performance.now()
+    setStatus(`Computing ${totalOutputs.toLocaleString()} compound rates...`)
 
-    setStatus('Formatting CSV...')
-    const csv = formatCSV(output, rateArray, numDays, mode)
-    const tFormat = performance.now()
+    const t0Gpu = performance.now()
+    const output = await runCompute(ratesData, weightsData, numDays, mode, totalOutputs, shaderSource)
+    const t1Gpu = performance.now()
+    const gpuCsv = formatCSV(output, rateArray, numDays, mode)
+    const t2Gpu = performance.now()
+
+    const t0Cpu = performance.now()
+    const cpuCsv = cpuCompoundCSV(rateArray, numDays, mode)
+    const t1Cpu = performance.now()
 
     const filename = makeFilename(startDate, userEndDate)
-    downloadFile(csv, filename)
+    lastGpuCsv = gpuCsv
+    lastCpuCsv = cpuCsv
+    lastFilename = filename
+
+    populateDiff(gpuCsv, cpuCsv)
+    switchTab('diff')
+
+    const gpuMs = (t1Gpu - t0Gpu).toFixed(0)
+    const gpuFmtMs = (t2Gpu - t1Gpu).toFixed(0)
+    const cpuMs = (t1Cpu - t0Cpu).toFixed(0)
+    const speedup = ((t1Cpu - t0Cpu) / (t1Gpu - t0Gpu)).toFixed(1)
+    const rows = totalOutputs.toLocaleString()
+    const diffCount = diffLines.filter(d => !d.isHeader && d.differs).length
 
     setStatus(
-      `Done \u2014 ${totalOutputs.toLocaleString()} compound rates\n` +
-      `GPU compute: ${(tGpu - t0).toFixed(0)} ms\n` +
-      `CSV format:  ${(tFormat - tGpu).toFixed(0)} ms\n` +
-      `Downloaded:  ${filename}\n\n` +
-      `Precision: df64 (double-f32 emulation, ~48-bit mantissa) with f64 reconstruction.`,
+      `${rows} compound rates · ${diffCount} differing line${diffCount !== 1 ? 's' : ''}\n\n` +
+      `           Compute    Format\n` +
+      `GPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms\n` +
+      `CPU  ${cpuMs.padStart(8)} ms\n\n` +
+      `GPU speedup: ${speedup}x`,
       'success',
     )
   } catch (err) {
@@ -292,3 +313,80 @@ function initMonaco() {
     })
   })
 }
+
+// ========== Tabs ==========
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name))
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === name))
+  if (name === 'editor' && monacoEditor) monacoEditor.layout()
+}
+
+document.querySelectorAll('.tab').forEach(t =>
+  t.addEventListener('click', () => switchTab(t.dataset.tab))
+)
+
+// ========== Diff Helpers ==========
+
+let diffLines = []
+
+function populateDiff(gpuCsv, cpuCsv) {
+  const gpuRows = gpuCsv.split('\n')
+  const cpuRows = cpuCsv.split('\n')
+  const maxLen = Math.max(gpuRows.length, cpuRows.length)
+  diffLines = []
+  for (let i = 0; i < maxLen; i++) {
+    const g = gpuRows[i] ?? ''
+    const c = cpuRows[i] ?? ''
+    diffLines.push({ lineNum: i, gpu: g, cpu: c, differs: g !== c, isHeader: i === 0 })
+  }
+  renderDiff()
+}
+
+function renderDiff() {
+  const hideCommon = document.getElementById('hideCommon').checked
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const visible = diffLines.filter(d => d.isHeader || !hideCommon || d.differs)
+
+  let numsHtml = ''
+  let gpuHtml = ''
+  let cpuHtml = ''
+
+  for (const d of visible) {
+    const num = d.isHeader ? '&nbsp;' : d.lineNum
+    let cls = 'diff-line'
+    if (!d.isHeader) {
+      if (d.gpu === '' && d.cpu !== '') cls += ' added'
+      else if (d.gpu !== '' && d.cpu === '') cls += ' removed'
+      else if (d.differs) cls += ' changed'
+    }
+    numsHtml += `<div class="diff-line diff-num">${num}</div>`
+    gpuHtml += `<div class="${cls}">${esc(d.gpu)}</div>`
+    cpuHtml += `<div class="${cls}">${esc(d.cpu)}</div>`
+  }
+
+  diffViewEl.innerHTML =
+    `<div class="diff-nums-col">${numsHtml}</div>` +
+    `<div class="diff-col">${gpuHtml}</div>` +
+    `<div class="diff-col">${cpuHtml}</div>`
+}
+
+document.getElementById('hideCommon').addEventListener('change', renderDiff)
+
+// ========== Diff Actions ==========
+
+document.getElementById('gpuDownloadBtn').addEventListener('click', () => {
+  if (lastGpuCsv) downloadFile(lastGpuCsv, lastFilename)
+})
+
+document.getElementById('gpuCopyBtn').addEventListener('click', () => {
+  if (lastGpuCsv) navigator.clipboard.writeText(lastGpuCsv)
+})
+
+document.getElementById('cpuDownloadBtn').addEventListener('click', () => {
+  if (lastCpuCsv) downloadFile(lastCpuCsv, lastFilename.replace('saron-compound-', 'saron-compound-cpu-'))
+})
+
+document.getElementById('cpuCopyBtn').addEventListener('click', () => {
+  if (lastCpuCsv) navigator.clipboard.writeText(lastCpuCsv)
+})
