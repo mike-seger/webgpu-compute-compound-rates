@@ -148,7 +148,7 @@ document.getElementById('tsvFile').addEventListener('change', async e => {
     const rates = loadRates(text)
     loadedRateMap = fillRates(rates)
     const keys = [...loadedRateMap.keys()]
-    fileStatusEl.textContent = `${keys.length} daily rates loaded (${keys[0]} to ${keys[keys.length - 1]})`
+    fileStatusEl.textContent = `${keys.length} rates (${keys[0]} to ${keys[keys.length - 1]})`
     setStatus('Ready. Click Calculate to run.')
     updateCalcBtn()
   } catch (err) {
@@ -270,11 +270,10 @@ calcBtn.addEventListener('click', async () => {
 // ========== Monaco Editor ==========
 
 if (typeof require !== 'undefined' && require.config) {
-  // Monaco loaded via CDN script tag
   initMonaco()
-} else if (document.querySelector('script[data-monaco]')) {
-  // Wait for Monaco loader script
-  document.querySelector('script[data-monaco]').addEventListener('load', initMonaco)
+} else {
+  const el = document.querySelector('script[data-monaco]')
+  if (el) el.addEventListener('load', initMonaco)
 }
 
 function initMonaco() {
