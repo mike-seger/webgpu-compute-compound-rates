@@ -45,7 +45,7 @@ Provide a custom WGSL shader path as the last argument to replace the default `c
 
 ## Browser Version
 
-Open `saron-compound.html` via a local HTTP server. The page loads a TSV file, runs the WebGPU compute shader, and downloads the CSV result. The `compoundRate` shader can be edited live in the Monaco editor.
+Open `index.html` via a local HTTP server. The page loads a TSV file, runs the WebGPU compute shader, and downloads the CSV result. The `compoundRate` shader can be edited live in the Monaco editor.
 
 ## Parameters
 
