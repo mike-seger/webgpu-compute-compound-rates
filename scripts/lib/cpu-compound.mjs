@@ -17,22 +17,22 @@ function compoundRate(rateArray, start, end) {
 	return [start, end, result]
 }
 
-export function cpuCompoundCSV(rateArray, numDays, mode) {
+export function cpuCompoundCSV(rateArray, numDays, mode, decimals = 4) {
 	const lines = ['startDate,endDate,value']
 	const end = numDays
 	if (mode === 0) {
 		const cr = compoundRate(rateArray, 0, end)
-		lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], 4)}`)
+		lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], decimals)}`)
 	} else if (mode === 1) {
 		for (let offset = 0; offset < end; offset++) {
 			const cr = compoundRate(rateArray, offset, offset + 1)
-			lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], 4)}`)
+			lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], decimals)}`)
 		}
 	} else {
 		for (let offset = 0; offset < end; offset++) {
 			for (let edOffset = 0; edOffset < end - offset; edOffset++) {
 				const cr = compoundRate(rateArray, offset, offset + edOffset + 1)
-				lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], 4)}`)
+				lines.push(`${rateArray[cr[0]][0]},${rateArray[cr[1]][0]},${formattedRound(cr[2], decimals)}`)
 			}
 		}
 	}

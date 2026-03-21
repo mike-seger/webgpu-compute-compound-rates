@@ -18,9 +18,12 @@
   </h2>
 
   <div class="controls">
-    <div class="full">
+    <div class="full file-row">
       <label class="field">Rates TSV file</label>
-      <input type="file" id="tsvFile" accept=".tsv,.csv,.txt" />
+      <div class="file-row-inner">
+        <input type="file" id="tsvFile" accept=".tsv,.csv,.txt" />
+        <span id="fileStatus" class="file-status"></span>
+      </div>
     </div>
     <div class="input-row full">
       <div class="date-field">
@@ -36,9 +39,16 @@
         <label><input type="checkbox" id="allStartDates" checked /> All start
           dates</label>
       </div>
+      <div class="dropdown-field">
+        <label class="field">Decimals</label>
+        <select id="decimals">
+          <option>0</option><option>1</option><option>2</option><option>3</option>
+          <option selected>4</option><option>5</option><option>6</option>
+          <option>7</option><option>8</option><option>9</option>
+        </select>
+      </div>
       <div class="btn-row">
         <button id="calcBtn" disabled>Calculate</button>
-        <span id="fileStatus" style="color: #aaa; font-size: 0.85em"></span>
       </div>
     </div>
   </div>
@@ -50,13 +60,16 @@
   <div class="tab-panels">
     <div id="editor" class="tab-panel active"></div>
     <div id="diff" class="tab-panel">
-      <div class="diff-header">
+      <div class="diff-toolbar">
+        <label class="diff-filter"><input type="checkbox" id="showCpu" checked> CPU</label>
+        <label class="diff-filter"><input type="checkbox" id="showGpu" checked> GPU</label>
+        <label class="diff-filter"><input type="checkbox" id="hideCommon"> Hide common</label>
+      </div>
+      <div class="diff-header" id="diffHeader">
         <div class="diff-hdr-num"></div>
         <div class="diff-hdr-col">CPU-R</div>
-        <div class="diff-hdr-col">CPU</div>
-        <div class="diff-hdr-col">GPU
-          <label class="diff-hdr-check"><input type="checkbox" id="hideCommon"> Hide common lines</label>
-        </div>
+        <div class="diff-hdr-col" id="cpuHdrCol">CPU</div>
+        <div class="diff-hdr-col" id="gpuHdrCol">GPU</div>
       </div>
       <div class="diff-view" id="diffView"></div>
       <div class="diff-actions">
@@ -65,11 +78,11 @@
           <button id="rationalDownloadBtn" class="icon-btn" title="Download CPU-R CSV">&#x2913;</button>
           <button id="rationalCopyBtn" class="icon-btn" title="Copy CPU-R to clipboard">&#x2398;</button>
         </div>
-        <div class="col-actions">
+        <div class="col-actions cpu-actions">
           <button id="cpuDownloadBtn" class="icon-btn" title="Download CPU CSV">&#x2913;</button>
           <button id="cpuCopyBtn" class="icon-btn" title="Copy CPU to clipboard">&#x2398;</button>
         </div>
-        <div class="col-actions">
+        <div class="col-actions gpu-actions">
           <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU CSV">&#x2913;</button>
           <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU to clipboard">&#x2398;</button>
         </div>

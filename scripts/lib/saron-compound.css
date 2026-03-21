@@ -87,6 +87,32 @@ input[type="file"]::file-selector-button:hover {
   flex: 0 0 auto;
   align-self: end;
 }
+.input-row .dropdown-field {
+  flex: 0 0 auto;
+  align-self: end;
+}
+.dropdown-field select {
+  box-sizing: border-box;
+  padding: 0.4rem;
+  font-size: 1em;
+  background: #1e3a52;
+  color: white;
+  border: 1px solid #3a6a8a;
+  border-radius: 4px;
+}
+.file-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.file-row-inner input[type="file"] {
+  flex: 0 0 auto;
+}
+.file-status {
+  color: #aaa;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
 .checkbox-row {
   display: flex;
   gap: 1.5rem;
@@ -211,6 +237,24 @@ button:disabled {
 .diff-line {
   padding: 0 8px;
 }
+.diff-toolbar {
+  display: flex;
+  gap: 1.2rem;
+  padding: 4px 8px;
+  background: #1e3a52;
+  border: 1px solid #3a6a8a;
+  border-bottom: none;
+  font-size: 11px;
+  font-family: sans-serif;
+  color: #aaa;
+}
+.diff-filter {
+  cursor: pointer;
+  white-space: nowrap;
+}
+.diff-filter input[type="checkbox"] {
+  vertical-align: -2px;
+}
 .diff-header {
   position: sticky;
   top: 0;
@@ -234,20 +278,6 @@ button:disabled {
 }
 .diff-hdr-col:not(:last-child) {
   border-right: 1px solid #3a6a8a;
-}
-.diff-hdr-check {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-weight: normal;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: sans-serif;
-  color: #aaa;
-}
-.diff-hdr-check input[type="checkbox"] {
-  vertical-align: -3px;
 }
 .diff-nums-col {
   text-align: right;

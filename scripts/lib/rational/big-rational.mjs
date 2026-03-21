@@ -43,12 +43,13 @@ export class BigRational {
 
 	// Convert to f64 string with given decimal places (rounding half-up).
 	toFixed(decimals) {
-		const neg = this.num < 0n
+		let neg = this.num < 0n
 		let num = neg ? -this.num : this.num
 		const scale = 10n ** BigInt(decimals + 1)
 		const scaled = num * scale / this.den
 		// round: add 5 then truncate last digit
 		const rounded = (scaled + 5n) / 10n
+		if (rounded === 0n) neg = false
 		let s = rounded.toString().padStart(decimals + 1, '0')
 		const intPart = s.slice(0, s.length - decimals) || '0'
 		const fracPart = s.slice(s.length - decimals)

@@ -8,7 +8,8 @@ export function range(start, end) {
 
 export function round(n, decimals) {
 	if (n < 0) return -round(-n, decimals)
-	return +(Math.round(n + 'e+' + decimals) + 'e-' + decimals)
+	const factor = 10 ** decimals
+	return Math.round(n * factor) / factor
 }
 
 export function formattedRound(n, decimals) {

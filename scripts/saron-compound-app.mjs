@@ -252,17 +252,19 @@ calcBtn.addEventListener('click', async () => {
     const t0Gpu = performance.now()
     const output = await runCompute(ratesData, weightsData, numDays, mode, totalOutputs, shaderSource)
     const t1Gpu = performance.now()
-    const gpuCsv = formatCSV(output, rateArray, numDays, mode)
+    const decimals = parseInt(document.getElementById('decimals').value, 10)
+
+    const gpuCsv = formatCSV(output, rateArray, numDays, mode, decimals)
     const t2Gpu = performance.now()
 
     const t0Cpu = performance.now()
-    const cpuCsv = cpuCompoundCSV(rateArray, numDays, mode)
+    const cpuCsv = cpuCompoundCSV(rateArray, numDays, mode, decimals)
     const t1Cpu = performance.now()
 
     setStatus(`Computing rational compound rates...`)
     await new Promise(r => setTimeout(r, 0))
     const t0R = performance.now()
-    const rationalCsv = rationalCompoundCSV(rateArray, numDays, mode)
+    const rationalCsv = rationalCompoundCSV(rateArray, numDays, mode, decimals)
     const t1R = performance.now()
 
     const filename = makeFilename(startDate, userEndDate)
@@ -359,8 +361,30 @@ function populateDiff(rationalCsv, cpuCsv, gpuCsv) {
 
 function renderDiff() {
   const hideCommon = document.getElementById('hideCommon').checked
+  const showCpu = document.getElementById('showCpu').checked
+  const showGpu = document.getElementById('showGpu').checked
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  const visible = diffLines.filter(d => d.isHeader || !hideCommon || d.cpuDiffers || d.gpuDiffers)
+
+  // Build dynamic grid columns
+  const cols = ['48px', '1fr']
+  if (showCpu) cols.push('1fr')
+  if (showGpu) cols.push('1fr')
+  const gridCols = cols.join(' ')
+  document.getElementById('diffHeader').style.gridTemplateColumns = gridCols
+  diffViewEl.style.gridTemplateColumns = gridCols
+  document.querySelector('.diff-actions').style.gridTemplateColumns = gridCols
+
+  // Toggle header/action visibility
+  document.getElementById('cpuHdrCol').style.display = showCpu ? '' : 'none'
+  document.getElementById('gpuHdrCol').style.display = showGpu ? '' : 'none'
+  document.querySelector('.col-actions.cpu-actions').style.display = showCpu ? '' : 'none'
+  document.querySelector('.col-actions.gpu-actions').style.display = showGpu ? '' : 'none'
+
+  const visible = diffLines.filter(d => {
+    if (d.isHeader) return true
+    if (!hideCommon) return true
+    return (showCpu && d.cpuDiffers) || (showGpu && d.gpuDiffers)
+  })
 
   let numsHtml = ''
   let rHtml = ''
@@ -373,18 +397,20 @@ function renderDiff() {
     const gpuCls = !d.isHeader && d.gpuDiffers ? 'diff-line changed' : 'diff-line'
     numsHtml += `<div class="diff-line diff-num">${num}</div>`
     rHtml += `<div class="diff-line">${esc(d.rational)}</div>`
-    cpuHtml += `<div class="${cpuCls}">${esc(d.cpu)}</div>`
-    gpuHtml += `<div class="${gpuCls}">${esc(d.gpu)}</div>`
+    if (showCpu) cpuHtml += `<div class="${cpuCls}">${esc(d.cpu)}</div>`
+    if (showGpu) gpuHtml += `<div class="${gpuCls}">${esc(d.gpu)}</div>`
   }
 
-  diffViewEl.innerHTML =
-    `<div class="diff-nums-col">${numsHtml}</div>` +
-    `<div class="diff-col">${rHtml}</div>` +
-    `<div class="diff-col">${cpuHtml}</div>` +
-    `<div class="diff-col">${gpuHtml}</div>`
+  let html = `<div class="diff-nums-col">${numsHtml}</div>` +
+    `<div class="diff-col">${rHtml}</div>`
+  if (showCpu) html += `<div class="diff-col">${cpuHtml}</div>`
+  if (showGpu) html += `<div class="diff-col">${gpuHtml}</div>`
+  diffViewEl.innerHTML = html
 }
 
 document.getElementById('hideCommon').addEventListener('change', renderDiff)
+document.getElementById('showCpu').addEventListener('change', renderDiff)
+document.getElementById('showGpu').addEventListener('change', renderDiff)
 
 // ========== Diff Actions ==========
 

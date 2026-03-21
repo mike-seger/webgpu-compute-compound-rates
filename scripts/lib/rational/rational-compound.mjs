@@ -20,11 +20,12 @@ function reduce(n, d) {
 
 // Matches BigRational.toFixed – half-up rounding on raw num/den.
 function toFixedRaw(num, den, decimals) {
-	const neg = num < 0n
+	let neg = num < 0n
 	if (neg) num = -num
 	const scale = 10n ** BigInt(decimals + 1)
 	const scaled = num * scale / den
 	const rounded = (scaled + 5n) / 10n
+	if (rounded === 0n) neg = false
 	let s = rounded.toString().padStart(decimals + 1, '0')
 	const intPart = s.slice(0, s.length - decimals) || '0'
 	const fracPart = s.slice(s.length - decimals)
