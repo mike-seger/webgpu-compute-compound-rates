@@ -52,8 +52,9 @@
     <div id="diff" class="tab-panel">
       <div class="diff-header">
         <div class="diff-hdr-num"></div>
-        <div class="diff-hdr-col">GPU</div>
-        <div class="diff-hdr-col">CPU
+        <div class="diff-hdr-col">CPU-R</div>
+        <div class="diff-hdr-col">CPU</div>
+        <div class="diff-hdr-col">GPU
           <label class="diff-hdr-check"><input type="checkbox" id="hideCommon"> Hide common lines</label>
         </div>
       </div>
@@ -61,12 +62,16 @@
       <div class="diff-actions">
         <div class="diff-actions-pad"></div>
         <div class="col-actions">
-          <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU CSV">&#x2913;</button>
-          <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU to clipboard">&#x2398;</button>
+          <button id="rationalDownloadBtn" class="icon-btn" title="Download CPU-R CSV">&#x2913;</button>
+          <button id="rationalCopyBtn" class="icon-btn" title="Copy CPU-R to clipboard">&#x2398;</button>
         </div>
         <div class="col-actions">
           <button id="cpuDownloadBtn" class="icon-btn" title="Download CPU CSV">&#x2913;</button>
           <button id="cpuCopyBtn" class="icon-btn" title="Copy CPU to clipboard">&#x2398;</button>
+        </div>
+        <div class="col-actions">
+          <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU CSV">&#x2913;</button>
+          <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU to clipboard">&#x2398;</button>
         </div>
       </div>
     </div>

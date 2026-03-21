@@ -2,6 +2,7 @@ import { diffDays, plusDays } from './lib/date-utils.mjs'
 import { loadRates, fillRates } from './lib/rate-loader.mjs'
 import { formatCSV } from './lib/gpu-format.mjs'
 import { cpuCompoundCSV } from './lib/cpu-compound.mjs'
+import { rationalCompoundCSV } from './lib/rational/rational-compound.mjs'
 
 const [SHADER_PREFIX, DEFAULT_SHADER, SHADER_SUFFIX] = await Promise.all([
   fetch('./scripts/lib/saron-prefix.wgsl').then(r => r.text()),
@@ -133,6 +134,7 @@ const diffViewEl = document.getElementById('diffView')
 
 let lastGpuCsv = ''
 let lastCpuCsv = ''
+let lastRationalCsv = ''
 let lastFilename = ''
 
 function setStatus(msg, cls, html) {
@@ -257,24 +259,32 @@ calcBtn.addEventListener('click', async () => {
     const cpuCsv = cpuCompoundCSV(rateArray, numDays, mode)
     const t1Cpu = performance.now()
 
+    setStatus(`Computing rational compound rates...`)
+    await new Promise(r => setTimeout(r, 0))
+    const t0R = performance.now()
+    const rationalCsv = rationalCompoundCSV(rateArray, numDays, mode)
+    const t1R = performance.now()
+
     const filename = makeFilename(startDate, userEndDate)
     lastGpuCsv = gpuCsv
     lastCpuCsv = cpuCsv
+    lastRationalCsv = rationalCsv
     lastFilename = filename
 
-    populateDiff(gpuCsv, cpuCsv)
+    populateDiff(rationalCsv, cpuCsv, gpuCsv)
     switchTab('diff')
 
     const gpuMs = (t1Gpu - t0Gpu).toFixed(0)
     const gpuFmtMs = (t2Gpu - t1Gpu).toFixed(0)
     const cpuMs = (t1Cpu - t0Cpu).toFixed(0)
-    const speedup = ((t1Cpu - t0Cpu) / (t1Gpu - t0Gpu)).toFixed(1)
+    const rMs = (t1R - t0R).toFixed(0)
     const rows = totalOutputs.toLocaleString()
-    const diffCount = diffLines.filter(d => !d.isHeader && d.differs).length
+    const cpuDiffs = diffLines.filter(d => !d.isHeader && d.cpuDiffers).length
+    const gpuDiffs = diffLines.filter(d => !d.isHeader && d.gpuDiffers).length
 
     setStatus(
-      `<span class="stat-left">${rows} compound rates \u00b7 ${diffCount} differing line${diffCount !== 1 ? 's' : ''}\nGPU speedup: ${speedup}x</span>` +
-      `<span class="stat-right">           Compute    Format\nGPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms\nCPU  ${cpuMs.padStart(8)} ms</span>`,
+      `<span class="stat-left">${rows} compound rates\nCPU: ${cpuDiffs} diff${cpuDiffs !== 1 ? 's' : ''} \u00b7 GPU: ${gpuDiffs} diff${gpuDiffs !== 1 ? 's' : ''}</span>` +
+      `<span class="stat-right">         Compute    Format\nCPU-R${rMs.padStart(8)} ms\nCPU  ${cpuMs.padStart(8)} ms\nGPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms</span>`,
       'success',
       true,
     )
@@ -328,15 +338,21 @@ document.querySelectorAll('.tab').forEach(t =>
 
 let diffLines = []
 
-function populateDiff(gpuCsv, cpuCsv) {
-  const gpuRows = gpuCsv.split('\n')
+function populateDiff(rationalCsv, cpuCsv, gpuCsv) {
+  const rRows = rationalCsv.split('\n')
   const cpuRows = cpuCsv.split('\n')
-  const maxLen = Math.max(gpuRows.length, cpuRows.length)
+  const gpuRows = gpuCsv.split('\n')
+  const maxLen = Math.max(rRows.length, cpuRows.length, gpuRows.length)
   diffLines = []
   for (let i = 0; i < maxLen; i++) {
-    const g = gpuRows[i] ?? ''
+    const r = rRows[i] ?? ''
     const c = cpuRows[i] ?? ''
-    diffLines.push({ lineNum: i, gpu: g, cpu: c, differs: g !== c, isHeader: i === 0 })
+    const g = gpuRows[i] ?? ''
+    diffLines.push({
+      lineNum: i, rational: r, cpu: c, gpu: g,
+      cpuDiffers: r !== c, gpuDiffers: r !== g,
+      isHeader: i === 0,
+    })
   }
   renderDiff()
 }
@@ -344,34 +360,41 @@ function populateDiff(gpuCsv, cpuCsv) {
 function renderDiff() {
   const hideCommon = document.getElementById('hideCommon').checked
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  const visible = diffLines.filter(d => d.isHeader || !hideCommon || d.differs)
+  const visible = diffLines.filter(d => d.isHeader || !hideCommon || d.cpuDiffers || d.gpuDiffers)
 
   let numsHtml = ''
-  let gpuHtml = ''
+  let rHtml = ''
   let cpuHtml = ''
+  let gpuHtml = ''
 
   for (const d of visible) {
     const num = d.isHeader ? '&nbsp;' : d.lineNum
-    let cls = 'diff-line'
-    if (!d.isHeader) {
-      if (d.gpu === '' && d.cpu !== '') cls += ' added'
-      else if (d.gpu !== '' && d.cpu === '') cls += ' removed'
-      else if (d.differs) cls += ' changed'
-    }
+    const cpuCls = !d.isHeader && d.cpuDiffers ? 'diff-line changed' : 'diff-line'
+    const gpuCls = !d.isHeader && d.gpuDiffers ? 'diff-line changed' : 'diff-line'
     numsHtml += `<div class="diff-line diff-num">${num}</div>`
-    gpuHtml += `<div class="${cls}">${esc(d.gpu)}</div>`
-    cpuHtml += `<div class="${cls}">${esc(d.cpu)}</div>`
+    rHtml += `<div class="diff-line">${esc(d.rational)}</div>`
+    cpuHtml += `<div class="${cpuCls}">${esc(d.cpu)}</div>`
+    gpuHtml += `<div class="${gpuCls}">${esc(d.gpu)}</div>`
   }
 
   diffViewEl.innerHTML =
     `<div class="diff-nums-col">${numsHtml}</div>` +
-    `<div class="diff-col">${gpuHtml}</div>` +
-    `<div class="diff-col">${cpuHtml}</div>`
+    `<div class="diff-col">${rHtml}</div>` +
+    `<div class="diff-col">${cpuHtml}</div>` +
+    `<div class="diff-col">${gpuHtml}</div>`
 }
 
 document.getElementById('hideCommon').addEventListener('change', renderDiff)
 
 // ========== Diff Actions ==========
+
+document.getElementById('rationalDownloadBtn').addEventListener('click', () => {
+  if (lastRationalCsv) downloadFile(lastRationalCsv, lastFilename.replace('saron-compound-', 'saron-compound-rational-'))
+})
+
+document.getElementById('rationalCopyBtn').addEventListener('click', () => {
+  if (lastRationalCsv) navigator.clipboard.writeText(lastRationalCsv)
+})
 
 document.getElementById('gpuDownloadBtn').addEventListener('click', () => {
   if (lastGpuCsv) downloadFile(lastGpuCsv, lastFilename)

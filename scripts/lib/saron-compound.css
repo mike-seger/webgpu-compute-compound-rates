@@ -192,7 +192,7 @@ button:disabled {
   line-height: 18px;
   color: #d4d4d4;
   display: grid;
-  grid-template-columns: 48px 1fr 1fr;
+  grid-template-columns: 48px 1fr 1fr 1fr;
 }
 .diff-col {
   white-space: pre;
@@ -216,7 +216,7 @@ button:disabled {
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: 48px 1fr 1fr;
+  grid-template-columns: 48px 1fr 1fr 1fr;
   background: #2a2d2e;
   border-bottom: 1px solid #3a6a8a;
   font-family: Menlo, Monaco, 'Courier New', monospace;
@@ -262,7 +262,7 @@ button:disabled {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: 48px 1fr 1fr;
+  grid-template-columns: 48px 1fr 1fr 1fr;
   pointer-events: none;
 }
 .diff-actions-pad {
