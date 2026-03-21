@@ -1,8 +1,9 @@
 import { diffDays, plusDays } from './lib/date-utils.mjs'
 import { loadRates, fillRates } from './lib/rate-loader.mjs'
 import { formatCSV } from './lib/gpu-format.mjs'
-import { cpuCompoundCSV } from './lib/cpu-compound.mjs'
+import { cpuCompoundCSV } from './lib/f64/f64-compound.mjs'
 import { rationalCompoundCSV } from './lib/rational/rational-compound.mjs'
+import { bigDecimalCompoundCSV } from './lib/bigdecimal/bigdecimal-compound.mjs'
 
 const [SHADER_PREFIX, DEFAULT_SHADER, SHADER_SUFFIX] = await Promise.all([
   fetch('./scripts/lib/saron-prefix.wgsl').then(r => r.text()),
@@ -134,6 +135,7 @@ const diffViewEl = document.getElementById('diffView')
 
 let lastGpuCsv = ''
 let lastCpuCsv = ''
+let lastBdCsv = ''
 let lastRationalCsv = ''
 let lastFilename = ''
 
@@ -148,21 +150,37 @@ function updateCalcBtn() {
 
 // ========== File Load ==========
 
+function applyRates(text) {
+  const rates = loadRates(text)
+  loadedRateMap = fillRates(rates)
+  const keys = [...loadedRateMap.keys()]
+  fileStatusEl.textContent = `${rates.length} rates (${keys[0]} to ${keys[keys.length - 1]})`
+  setStatus('Ready. Click Calculate to run.')
+  updateCalcBtn()
+}
+
 document.getElementById('tsvFile').addEventListener('change', async e => {
   const file = e.target.files[0]
   if (!file) return
   try {
-    const text = await file.text()
-    const rates = loadRates(text)
-    loadedRateMap = fillRates(rates)
-    const keys = [...loadedRateMap.keys()]
-    fileStatusEl.textContent = `${keys.length} rates (${keys[0]} to ${keys[keys.length - 1]})`
-    setStatus('Ready. Click Calculate to run.')
-    updateCalcBtn()
+    applyRates(await file.text())
   } catch (err) {
     loadedRateMap = null
     fileStatusEl.textContent = ''
     setStatus('File load error: ' + err.message, 'error')
+    updateCalcBtn()
+  }
+})
+
+document.getElementById('presetBtn').addEventListener('click', async () => {
+  try {
+    setStatus('Loading preset…')
+    const text = await fetch('./testdata/saron-1999-06-30_2024-06-12.tsv').then(r => r.text())
+    applyRates(text)
+  } catch (err) {
+    loadedRateMap = null
+    fileStatusEl.textContent = ''
+    setStatus('Preset load error: ' + err.message, 'error')
     updateCalcBtn()
   }
 })
@@ -261,6 +279,12 @@ calcBtn.addEventListener('click', async () => {
     const cpuCsv = cpuCompoundCSV(rateArray, numDays, mode, decimals)
     const t1Cpu = performance.now()
 
+    setStatus(`Computing BigDecimal compound rates...`)
+    await new Promise(r => setTimeout(r, 0))
+    const t0Bd = performance.now()
+    const bdCsv = bigDecimalCompoundCSV(rateArray, numDays, mode, decimals)
+    const t1Bd = performance.now()
+
     setStatus(`Computing rational compound rates...`)
     await new Promise(r => setTimeout(r, 0))
     const t0R = performance.now()
@@ -270,23 +294,26 @@ calcBtn.addEventListener('click', async () => {
     const filename = makeFilename(startDate, userEndDate)
     lastGpuCsv = gpuCsv
     lastCpuCsv = cpuCsv
+    lastBdCsv = bdCsv
     lastRationalCsv = rationalCsv
     lastFilename = filename
 
-    populateDiff(rationalCsv, cpuCsv, gpuCsv)
+    populateDiff(rationalCsv, bdCsv, cpuCsv, gpuCsv)
     switchTab('diff')
 
     const gpuMs = (t1Gpu - t0Gpu).toFixed(0)
     const gpuFmtMs = (t2Gpu - t1Gpu).toFixed(0)
     const cpuMs = (t1Cpu - t0Cpu).toFixed(0)
+    const bdMs = (t1Bd - t0Bd).toFixed(0)
     const rMs = (t1R - t0R).toFixed(0)
     const rows = totalOutputs.toLocaleString()
+    const bdDiffs = diffLines.filter(d => !d.isHeader && d.bdDiffers).length
     const cpuDiffs = diffLines.filter(d => !d.isHeader && d.cpuDiffers).length
     const gpuDiffs = diffLines.filter(d => !d.isHeader && d.gpuDiffers).length
 
     setStatus(
-      `<span class="stat-left">${rows} compound rates\nCPU: ${cpuDiffs} diff${cpuDiffs !== 1 ? 's' : ''} \u00b7 GPU: ${gpuDiffs} diff${gpuDiffs !== 1 ? 's' : ''}</span>` +
-      `<span class="stat-right">         Compute    Format\nCPU-R${rMs.padStart(8)} ms\nCPU  ${cpuMs.padStart(8)} ms\nGPU  ${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms</span>`,
+      `<span class="stat-left">${rows} compound rates\nCPU-BD: ${bdDiffs} diff${bdDiffs !== 1 ? 's' : ''} \u00b7 CPU-f64: ${cpuDiffs} diff${cpuDiffs !== 1 ? 's' : ''} \u00b7 GPU-f32: ${gpuDiffs} diff${gpuDiffs !== 1 ? 's' : ''}</span>` +
+      `<span class="stat-right">           Compute    Format\nCPU-R  ${rMs.padStart(8)} ms\nCPU-BD ${bdMs.padStart(8)} ms\nCPU-f64${cpuMs.padStart(8)} ms\nGPU-f32${gpuMs.padStart(8)} ms ${gpuFmtMs.padStart(8)} ms</span>`,
       'success',
       true,
     )
@@ -340,19 +367,21 @@ document.querySelectorAll('.tab').forEach(t =>
 
 let diffLines = []
 
-function populateDiff(rationalCsv, cpuCsv, gpuCsv) {
+function populateDiff(rationalCsv, bdCsv, cpuCsv, gpuCsv) {
   const rRows = rationalCsv.split('\n')
+  const bdRows = bdCsv.split('\n')
   const cpuRows = cpuCsv.split('\n')
   const gpuRows = gpuCsv.split('\n')
-  const maxLen = Math.max(rRows.length, cpuRows.length, gpuRows.length)
+  const maxLen = Math.max(rRows.length, bdRows.length, cpuRows.length, gpuRows.length)
   diffLines = []
   for (let i = 0; i < maxLen; i++) {
     const r = rRows[i] ?? ''
+    const b = bdRows[i] ?? ''
     const c = cpuRows[i] ?? ''
     const g = gpuRows[i] ?? ''
     diffLines.push({
-      lineNum: i, rational: r, cpu: c, gpu: g,
-      cpuDiffers: r !== c, gpuDiffers: r !== g,
+      lineNum: i, rational: r, bd: b, cpu: c, gpu: g,
+      bdDiffers: r !== b, cpuDiffers: r !== c, gpuDiffers: r !== g,
       isHeader: i === 0,
     })
   }
@@ -361,12 +390,16 @@ function populateDiff(rationalCsv, cpuCsv, gpuCsv) {
 
 function renderDiff() {
   const hideCommon = document.getElementById('hideCommon').checked
+  const showBd = document.getElementById('showBd').checked
   const showCpu = document.getElementById('showCpu').checked
   const showGpu = document.getElementById('showGpu').checked
+  const hideDates = document.getElementById('hideDates').checked
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  const stripDates = s => hideDates ? s.replace(/^.*,/, '') : s
 
   // Build dynamic grid columns
   const cols = ['48px', '1fr']
+  if (showBd) cols.push('1fr')
   if (showCpu) cols.push('1fr')
   if (showGpu) cols.push('1fr')
   const gridCols = cols.join(' ')
@@ -375,40 +408,48 @@ function renderDiff() {
   document.querySelector('.diff-actions').style.gridTemplateColumns = gridCols
 
   // Toggle header/action visibility
+  document.getElementById('bdHdrCol').style.display = showBd ? '' : 'none'
   document.getElementById('cpuHdrCol').style.display = showCpu ? '' : 'none'
   document.getElementById('gpuHdrCol').style.display = showGpu ? '' : 'none'
+  document.querySelector('.col-actions.bd-actions').style.display = showBd ? '' : 'none'
   document.querySelector('.col-actions.cpu-actions').style.display = showCpu ? '' : 'none'
   document.querySelector('.col-actions.gpu-actions').style.display = showGpu ? '' : 'none'
 
   const visible = diffLines.filter(d => {
     if (d.isHeader) return true
     if (!hideCommon) return true
-    return (showCpu && d.cpuDiffers) || (showGpu && d.gpuDiffers)
+    return (showBd && d.bdDiffers) || (showCpu && d.cpuDiffers) || (showGpu && d.gpuDiffers)
   })
 
   let numsHtml = ''
   let rHtml = ''
+  let bdHtml = ''
   let cpuHtml = ''
   let gpuHtml = ''
 
   for (const d of visible) {
     const num = d.isHeader ? '&nbsp;' : d.lineNum
+    const bdCls = !d.isHeader && d.bdDiffers ? 'diff-line changed' : 'diff-line'
     const cpuCls = !d.isHeader && d.cpuDiffers ? 'diff-line changed' : 'diff-line'
     const gpuCls = !d.isHeader && d.gpuDiffers ? 'diff-line changed' : 'diff-line'
     numsHtml += `<div class="diff-line diff-num">${num}</div>`
     rHtml += `<div class="diff-line">${esc(d.rational)}</div>`
-    if (showCpu) cpuHtml += `<div class="${cpuCls}">${esc(d.cpu)}</div>`
-    if (showGpu) gpuHtml += `<div class="${gpuCls}">${esc(d.gpu)}</div>`
+    if (showBd) bdHtml += `<div class="${bdCls}">${esc(stripDates(d.bd))}</div>`
+    if (showCpu) cpuHtml += `<div class="${cpuCls}">${esc(stripDates(d.cpu))}</div>`
+    if (showGpu) gpuHtml += `<div class="${gpuCls}">${esc(stripDates(d.gpu))}</div>`
   }
 
   let html = `<div class="diff-nums-col">${numsHtml}</div>` +
     `<div class="diff-col">${rHtml}</div>`
+  if (showBd) html += `<div class="diff-col">${bdHtml}</div>`
   if (showCpu) html += `<div class="diff-col">${cpuHtml}</div>`
   if (showGpu) html += `<div class="diff-col">${gpuHtml}</div>`
   diffViewEl.innerHTML = html
 }
 
 document.getElementById('hideCommon').addEventListener('change', renderDiff)
+document.getElementById('hideDates').addEventListener('change', renderDiff)
+document.getElementById('showBd').addEventListener('change', renderDiff)
 document.getElementById('showCpu').addEventListener('change', renderDiff)
 document.getElementById('showGpu').addEventListener('change', renderDiff)
 
@@ -423,7 +464,7 @@ document.getElementById('rationalCopyBtn').addEventListener('click', () => {
 })
 
 document.getElementById('gpuDownloadBtn').addEventListener('click', () => {
-  if (lastGpuCsv) downloadFile(lastGpuCsv, lastFilename)
+  if (lastGpuCsv) downloadFile(lastGpuCsv, lastFilename.replace('saron-compound-', 'saron-compound-gpu-f32-'))
 })
 
 document.getElementById('gpuCopyBtn').addEventListener('click', () => {
@@ -431,9 +472,17 @@ document.getElementById('gpuCopyBtn').addEventListener('click', () => {
 })
 
 document.getElementById('cpuDownloadBtn').addEventListener('click', () => {
-  if (lastCpuCsv) downloadFile(lastCpuCsv, lastFilename.replace('saron-compound-', 'saron-compound-cpu-'))
+  if (lastCpuCsv) downloadFile(lastCpuCsv, lastFilename.replace('saron-compound-', 'saron-compound-f64-'))
 })
 
 document.getElementById('cpuCopyBtn').addEventListener('click', () => {
   if (lastCpuCsv) navigator.clipboard.writeText(lastCpuCsv)
+})
+
+document.getElementById('bdDownloadBtn').addEventListener('click', () => {
+  if (lastBdCsv) downloadFile(lastBdCsv, lastFilename.replace('saron-compound-', 'saron-compound-bd-'))
+})
+
+document.getElementById('bdCopyBtn').addEventListener('click', () => {
+  if (lastBdCsv) navigator.clipboard.writeText(lastBdCsv)
 })

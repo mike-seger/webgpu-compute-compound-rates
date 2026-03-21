@@ -108,6 +108,12 @@ input[type="file"]::file-selector-button:hover {
 .file-row-inner input[type="file"] {
   flex: 0 0 auto;
 }
+.preset-btn {
+  flex: 0 0 auto;
+  padding: 0.25em 0.6em;
+  font-size: 0.85em;
+  cursor: pointer;
+}
 .file-status {
   color: #aaa;
   font-size: 0.85em;

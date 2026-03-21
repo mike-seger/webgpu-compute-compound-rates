@@ -22,6 +22,7 @@
       <label class="field">Rates TSV file</label>
       <div class="file-row-inner">
         <input type="file" id="tsvFile" accept=".tsv,.csv,.txt" />
+        <button type="button" id="presetBtn" class="preset-btn">1999–2024</button>
         <span id="fileStatus" class="file-status"></span>
       </div>
     </div>
@@ -61,15 +62,18 @@
     <div id="editor" class="tab-panel active"></div>
     <div id="diff" class="tab-panel">
       <div class="diff-toolbar">
-        <label class="diff-filter"><input type="checkbox" id="showCpu" checked> CPU</label>
-        <label class="diff-filter"><input type="checkbox" id="showGpu" checked> GPU</label>
+        <label class="diff-filter"><input type="checkbox" id="showBd" checked> CPU-BD</label>
+        <label class="diff-filter"><input type="checkbox" id="showCpu" checked> CPU-f64</label>
+        <label class="diff-filter"><input type="checkbox" id="showGpu" checked> GPU-f32</label>
         <label class="diff-filter"><input type="checkbox" id="hideCommon"> Hide common</label>
+        <label class="diff-filter"><input type="checkbox" id="hideDates" checked> Hide dates</label>
       </div>
       <div class="diff-header" id="diffHeader">
         <div class="diff-hdr-num"></div>
         <div class="diff-hdr-col">CPU-R</div>
-        <div class="diff-hdr-col" id="cpuHdrCol">CPU</div>
-        <div class="diff-hdr-col" id="gpuHdrCol">GPU</div>
+        <div class="diff-hdr-col" id="bdHdrCol">CPU-BD</div>
+        <div class="diff-hdr-col" id="cpuHdrCol">CPU-f64</div>
+        <div class="diff-hdr-col" id="gpuHdrCol">GPU-f32</div>
       </div>
       <div class="diff-view" id="diffView"></div>
       <div class="diff-actions">
@@ -78,13 +82,17 @@
           <button id="rationalDownloadBtn" class="icon-btn" title="Download CPU-R CSV">&#x2913;</button>
           <button id="rationalCopyBtn" class="icon-btn" title="Copy CPU-R to clipboard">&#x2398;</button>
         </div>
+        <div class="col-actions bd-actions">
+          <button id="bdDownloadBtn" class="icon-btn" title="Download CPU-BD CSV">&#x2913;</button>
+          <button id="bdCopyBtn" class="icon-btn" title="Copy CPU-BD to clipboard">&#x2398;</button>
+        </div>
         <div class="col-actions cpu-actions">
-          <button id="cpuDownloadBtn" class="icon-btn" title="Download CPU CSV">&#x2913;</button>
-          <button id="cpuCopyBtn" class="icon-btn" title="Copy CPU to clipboard">&#x2398;</button>
+          <button id="cpuDownloadBtn" class="icon-btn" title="Download CPU-f64 CSV">&#x2913;</button>
+          <button id="cpuCopyBtn" class="icon-btn" title="Copy CPU-f64 to clipboard">&#x2398;</button>
         </div>
         <div class="col-actions gpu-actions">
-          <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU CSV">&#x2913;</button>
-          <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU to clipboard">&#x2398;</button>
+          <button id="gpuDownloadBtn" class="icon-btn" title="Download GPU-f32 CSV">&#x2913;</button>
+          <button id="gpuCopyBtn" class="icon-btn" title="Copy GPU-f32 to clipboard">&#x2398;</button>
         </div>
       </div>
     </div>

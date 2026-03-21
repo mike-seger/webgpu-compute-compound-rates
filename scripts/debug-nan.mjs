@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { loadRates, fillRates } from './lib/rate-loader.mjs'
-import { cpuCompoundCSV } from './lib/cpu-compound.mjs'
+import { cpuCompoundCSV } from './lib/f64/f64-compound.mjs'
 import { diffDays, plusDays } from './lib/date-utils.mjs'
 import { readFileSync } from 'fs'
 
